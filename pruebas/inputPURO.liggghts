@@ -1,0 +1,308 @@
+# 1. Parametros iniciales
+atom_style hybrid granular bond/gran n_bondtypes 2 bonds_per_atom 5
+boundary f f f
+units si
+communicate single vel yes
+newton off
+
+
+# 2. Semilla de la simulacion
+#variable seed file prime_seed.txt
+
+# 3. Parametro de la caja de simulacion
+
+#variable xmin equal -6
+#variable xmax equal 6
+#variable ymin equal -6
+#variable ymax equal 6
+#variable zmin equal -1.0
+#variable zmax equal 60.0
+
+
+
+# 4. Paso de simulacion
+variable dt equal 4e-6
+
+# 5. Numero de particulas y parametros
+
+variable natoms equal 5
+
+
+variable youngmodulus1 equal 2.64e7
+variable youngmodulus2 equal 2.64e7
+variable youngmodulus3 equal 1e8
+variable youngmodulus4 equal 1e8
+variable youngmodulus5 equal 1e8
+
+variable poisson1 equal 0.45
+variable poisson2 equal 0.45
+variable poisson3 equal 0.3
+variable poisson4 equal 0.3
+variable poisson5 equal 0.3
+
+
+variable CoR11 equal 0.1
+variable CoR12 equal 0.1
+variable CoR13 equal 0.1
+variable CoR14 equal 0.1
+variable CoR15 equal 0.1
+
+variable CoR21 equal 0.1
+variable CoR22 equal 0.1
+variable CoR23 equal 0.1
+variable CoR24 equal 0.1
+variable CoR25 equal 0.1
+
+
+variable CoR31 equal 0.1
+variable CoR32 equal 0.1
+variable CoR33 equal 0.1
+variable CoR34 equal 0.1
+variable CoR35 equal 0.1
+
+variable CoR41 equal 0.1
+variable CoR42 equal 0.1
+variable CoR43 equal 0.1
+variable CoR44 equal 0.1
+variable CoR45 equal 0.1
+
+variable CoR51 equal 0.1
+variable CoR52 equal 0.1
+variable CoR53 equal 0.1
+variable CoR54 equal 0.1
+variable CoR55 equal 0.1
+
+variable sf11 equal 0.5
+variable sf12 equal 0.5
+variable sf13 equal 0.5
+variable sf14 equal 0.5
+variable sf15 equal 0.5
+
+variable sf21 equal 0.5
+variable sf22 equal 0.5
+variable sf23 equal 0.5
+variable sf24 equal 0.5
+variable sf25 equal 0.5
+
+variable sf31 equal 0.5
+variable sf32 equal 0.5
+variable sf33 equal 0.5
+variable sf34 equal 0.5
+variable sf35 equal 0.5
+
+variable sf41 equal 0.5
+variable sf42 equal 0.5
+variable sf43 equal 0.5
+variable sf44 equal 0.5
+variable sf45 equal 0.5
+
+variable sf51 equal 0.5
+variable sf52 equal 0.5
+variable sf53 equal 0.5
+variable sf54 equal 0.5
+variable sf55 equal 0.5
+
+variable density equal 1000
+variable diameter equal 0.5
+
+
+# 7. Parametros del post
+variable dumptime equal 0.004
+variable dumpstep equal ${dumptime}/${dt}
+
+
+# Comandos de LIGGGHTS
+#region reg block ${xmin} ${xmax} ${ymin} ${ymax} ${zmin} ${zmax} units box
+#create_box 3 reg
+
+neighbor 0.004 bin
+neigh_modify delay 0
+read_data coords.data
+
+pair_style gran model hertz tangential history
+pair_coeff * *
+bond_style gran # for the granular fiber bond
+timestep ${dt}
+fix integrator all nve/sphere
+fix gravi all gravity 9.8 vector 0.0 0.0 -1.0
+
+
+
+
+
+#create_atoms 4 single 0.0 0.0 -0.03 units box
+#create_atoms 4 single -0.06 0.06 -0.01 units box
+#create_atoms 4 single 0.06 -0.06 -0.01 units box
+
+
+# 12. Definir las propiedades de las partículas 
+
+fix m1 all property/global youngsModulus peratomtype ${youngmodulus1} ${youngmodulus2} ${youngmodulus3} ${youngmodulus4} ${youngmodulus5}
+fix m2 all property/global poissonsRatio peratomtype ${poisson1} ${poisson2} ${poisson3} ${poisson4} ${poisson5}
+fix m3 all property/global coefficientRestitution peratomtypepair ${natoms} ${CoR11} ${CoR12} ${CoR13} ${CoR14} ${CoR15} ${CoR21} ${CoR22} ${CoR23} ${CoR24} ${CoR25} ${CoR31} ${CoR32} ${CoR33} ${CoR34} ${CoR35} ${CoR41} ${CoR42} ${CoR43} ${CoR44} ${CoR45} ${CoR51} ${CoR52} ${CoR53} ${CoR54} ${CoR55}
+fix m4 all property/global coefficientFriction peratomtypepair ${natoms} ${sf11} ${sf12} ${sf13} ${sf14} ${sf15}  ${sf21} ${sf22} ${sf23} ${sf24} ${sf25} ${sf31} ${sf32} ${sf33} ${sf34} ${sf35} ${sf41} ${sf42} ${sf43} ${sf44} ${sf45} ${sf51} ${sf52} ${sf53} ${sf54} ${sf55}
+
+
+
+group fijas type 2
+group globo type 1
+
+#--------------------- Bond Style ---------------------
+bond_style gran
+
+#--------------------- Bond Coefficients ---------------------
+# bond_coeff <bond_type> <ro> <ri> <Sn> <St> <damp_type> <damp_val> <breakmode> <sigma_break> <tau_break>
+
+bond_coeff 1 0.4 0.0 6e5 0.49e5 1 2 1 1e20 1e20
+
+fix congelar fijas freeze
+
+group Mgranular type 4
+set group Mgranular diameter 0.004
+set group Mgranular density 1500
+
+group objeto type 5
+set group objeto diameter 0.018
+set group objeto density 1500
+
+
+
+#compute stress Mgranular stress/atom
+#compute chainf Mgranular contact/atom/gran 
+shell mkdir post
+
+fix piso all mesh/surface file disco_tapa_chica.stl type 3  scale 0.001 
+#fix objeto all mesh/surface file esferita.stl type 3  scale 0.001 
+
+
+#dump dmpred globo custom/vtk ${dumpstep} post/globo_*.vtk id type x y z vx vy vz fx fy fz radius mass
+#dump dmpMgranular Mgranular custom/vtk ${dumpstep} post/Mgranular_*.vtk id type x y z vx vy vz fx fy fz radius mass
+#dump dmpfijas fijas custom/vtk ${dumpstep} post/fijas_*.vtk id type x y z vx vy vz fx fy fz radius mass
+#dump dmppiso all mesh/stl ${dumpstep} post/disco_tapa_chica_*.stl piso
+#dump dmpobjeto all mesh/stl ${dumpstep} post/esferita_*.stl objeto   #este es el stl
+#dump dmpstress Mgranular custom/vtk ${dumpstep} post/stress_*.vtk id type c_stress[1] c_stress[2] c_stress[3] c_stress[4] c_stress[5] c_stress[6]
+#dump dmpchainf Mgranular custom/vtk ${dumpstep} post/chainforce_*.vtk id type c_chainf
+#dump dmpobjeto objeto custom/vtk ${dumpstep} post/objeto_*.vtk id type x y z vx vy vz fx fy fz radius mass #este es el type 5
+
+
+
+thermo 1000
+run 48000
+
+fix walls all wall/gran model hertz tangential history mesh n_meshes 1 meshes piso 
+fix damp Mgranular viscous 0.001
+fix damp globo viscous 0.001
+
+run 160000 #acá van aprox 160.000 para la relajación con la viscosidad. 
+
+unfix damp
+
+run 50000 #acá van aprox 50.000 para seguir relajando sin viscosidad
+
+write_data post_coords1.data #acá escribo las coordenadas relajadas 
+
+run 1000
+
+
+
+create_atoms 5 single 0.0 0 -0.1 units box
+
+#Variables del objeto en movimiento en Z
+variable movevelZ equal 0.05 #velocidad de movimiento
+variable movetimeZ equal 0.16 # el objeto se mueve durante 1 segundo (0.1m) 10 centimetros
+variable movestepsZ equal ${movetimeZ}/${dt} #40000 dt=(4x10-6)
+
+# mover el objeto en Z
+fix MoveZ objeto move linear 0. 0. ${movevelZ}
+thermo 1000
+run ${movestepsZ}
+unfix MoveZ
+run 25000
+
+variable Rmax equal 0.08
+variable Hcampo equal -0.12
+variable Fmag equal 0.0002
+
+region envolvente cylinder z 0.0 0.0 ${Rmax} ${Hcampo} 0.0 units box
+
+group sensibles type 1 4
+variable r atom x^2+y^2
+variable sqrtr atom sqrt(v_r)
+variable r_safe atom (v_sqrtr+1.0e-10)
+variable alpha atom (1.0-v_sqrtr/v_Rmax)*(PI/2.0)
+
+
+variable fxx atom (-v_Fmag*cos(v_alpha)*x/v_r_safe)
+variable fyy atom (-v_Fmag*cos(v_alpha)*y/v_r_safe)
+variable fzz atom (v_Fmag*sin(v_alpha))
+
+fix campo sensibles addforce v_fxx v_fyy v_fzz region envolvente
+
+
+thermo 1000
+run 40000
+fix MoveZ objeto move linear 0. 0. -0.05
+thermo 1000
+run ${movestepsZ}
+unfix MoveZ
+run 100000
+
+
+#ACÁ TERMINA EL CÓDIGOOO
+
+
+
+
+#write_data sistema_final.data
+
+# Set properties to bond particles together
+#variable bond_skin equal 1.1*${diameter}
+#fix bondcr all bond/create/gran 1 1 1 ${bond_skin} 1 2 #every itype jtype cutoff btype newperts
+#run 1
+#fix bondcr all bond/create/gran 1 2 2 ${bond_skin} 2 2 #every itype jtype cutoff btype newperts
+#run 2
+#fix bondcr all bond/create/gran 1 1 2 ${bond_skin} 2 6 #every itype jtype cutoff btype newperts
+#group mover id 1
+#fix moverz mover move linear 0.0 0 1
+
+
+variable Ra equal 0.09  # Radio del hemisferio, ajustar si es necesario
+
+# Definir regiones de los 4 octantes del hemisferio inferior
+region oct1 block 0.0 ${Ra} 0.0 ${Ra} -0.3 0 units box
+region oct2 block -${Ra} 0.0 0.0 ${Ra} -0.3 0 units box
+region oct3 block -${Ra} 0.0 -${Ra} 0.0 -0.3 0 units box
+region oct4 block 0.0 ${Ra} -${Ra} 0.0 -0.3 0 units box
+
+
+# Aplicar fuerza en dirección inclinada hacia arriba y al centro
+fix fuerza1 Mgranular addforce -0.004905 -0.004905 0.0069367 region oct1
+fix fuerza2 Mgranular addforce  0.004905 -0.004905 0.0069367 region oct2
+fix fuerza3 Mgranular addforce  0.004905  0.004905 0.0069367 region oct3
+fix fuerza4 Mgranular addforce -0.004905  0.004905 0.0069367 region oct4
+
+
+# Parámetros del campo
+variable Rmax equal 0.12          # Radio de la esfera
+variable Fmag1 equal 0.0005         # Magnitud de la fuerza
+
+# Región: semiesfera inferior centrada en el origen
+region esfera sphere 0.0 0.0 0.0 0.12 side in
+region bloque block -0.2 0.2 -0.2 0.2 -0.2 0.0 units box 
+region inferior intersect 2 esfera bloque
+
+# Grupo de partículas afectadas
+group sensibles type 1 4
+
+# Distancia al origen
+variable r2 atom x^2+y^2+z^2
+variable r atom sqrt(v_r2)
+variable r_safe atom v_r+1.0e-10  # evitar división por cero
+
+# Fuerza dirigida al centro (0,0,0)
+variable fxx1 atom (-v_Fmag1)*(x/v_r_safe)
+variable fyy1 atom (-v_Fmag1)*(y/v_r_safe)
+variable fzz1 atom (-v_Fmag1)*(z/v_r_safe)
+
+# Aplicar fuerza solo en la región de semiesfera inferior
+fix campo sensibles addforce v_fxx1 v_fyy1 v_fzz1 region inferior
